@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AK820 Pro Studio</title>
+<style>
+  :root {
+    --bg:#0f1115; --card:#181b21; --card2:#1e222a; --line:#282d36;
+    --fg:#e8eaee; --dim:#98a1b0; --faint:#6b7484;
+    --acc:#5b9bff; --acc-dim:#274063;
+    --ok:#4ade80; --warn:#fbbf24; --err:#f87171;
+    --r:12px;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body {
+    margin:0; padding:0 20px 60px; background:var(--bg); color:var(--fg);
+    font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:900px; margin:0 auto; }
+
+  /* Kopfbereich */
+  header { padding:26px 0 0; }
+  .brand { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .brand h1 { font-size:21px; margin:0; letter-spacing:-.01em; }
+  .brand p { margin:2px 0 0; color:var(--dim); font-size:13px; }
+  .spacer { flex:1; }
+  .pill {
+    display:inline-flex; align-items:center; gap:7px; padding:6px 13px; border-radius:999px;
+    font-size:13px; font-weight:500; background:var(--card2); color:var(--dim); border:1px solid var(--line);
+    white-space:nowrap;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--faint); flex:0 0 auto; }
+  .pill.on { background:rgba(74,222,128,.1); color:var(--ok); border-color:rgba(74,222,128,.25); }
+  .pill.on .dot { background:var(--ok); }
+
+  /* Reiter */
+  nav { display:flex; gap:4px; margin:24px 0 22px; border-bottom:1px solid var(--line); overflow-x:auto; }
+  nav button {
+    background:none; border:0; border-bottom:2px solid transparent; color:var(--dim);
+    padding:11px 16px; font-size:14px; font-weight:500; cursor:pointer; white-space:nowrap;
+    margin:0; border-radius:0;
+  }
+  nav button:hover { color:var(--fg); }
+  nav button.active { color:var(--fg); border-bottom-color:var(--acc); }
+  .tab { display:none; }
+  .tab.active { display:block; animation:fade .18s ease; }
+  @keyframes fade { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+
+  /* Karten */
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:20px; margin-bottom:16px; }
+  .card > h2 { font-size:16px; margin:0 0 4px; font-weight:600; letter-spacing:-.01em; }
+  .card > h2 + .lead { margin:0 0 18px; color:var(--dim); font-size:13.5px; }
+  .card h3 { font-size:13px; margin:22px 0 10px; color:var(--faint); text-transform:uppercase; letter-spacing:.07em; font-weight:600; }
+  .card h3:first-child { margin-top:0; }
+
+  /* Bedienelemente */
+  button {
+    background:var(--acc); color:#fff; border:0; border-radius:8px; padding:9px 16px;
+    font-size:14px; font-weight:500; cursor:pointer; margin:0 8px 8px 0; font-family:inherit;
+    transition:filter .12s;
+  }
+  button.sec { background:var(--card2); color:var(--fg); border:1px solid var(--line); }
+  button.sm { padding:5px 11px; font-size:12.5px; }
+  button:hover:not(:disabled) { filter:brightness(1.15); }
+  button:disabled { opacity:.35; cursor:not-allowed; }
+
+  select, input[type=text] {
+    background:var(--card2); color:var(--fg); border:1px solid var(--line); border-radius:8px;
+    padding:9px 11px; font-size:14px; font-family:inherit; width:100%;
+  }
+  input[type=text].mono { font-family:ui-monospace, Menlo, monospace; font-size:13px; }
+  select:focus, input:focus { outline:2px solid var(--acc-dim); outline-offset:1px; }
+  input[type=color] { width:44px; height:36px; padding:2px; background:var(--card2); border:1px solid var(--line); border-radius:8px; cursor:pointer; }
+  input[type=range] { width:100%; accent-color:var(--acc); }
+  input[type=checkbox] { width:17px; height:17px; accent-color:var(--acc); cursor:pointer; }
+  input[type=file] { font-size:13px; color:var(--dim); width:100%; }
+
+  .field { margin-bottom:14px; }
+  .field > label { display:block; color:var(--dim); font-size:12.5px; margin-bottom:6px; font-weight:500; }
+  .grid { display:grid; gap:14px; }
+  .g2 { grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
+  .g3 { grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
+  .check { display:flex; align-items:center; gap:9px; color:var(--fg); font-size:14px; cursor:pointer; margin-bottom:14px; }
+  .check span { color:var(--dim); font-size:12.5px; }
+  .actions { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+  .actions:first-child { margin-top:0; padding-top:0; border-top:0; }
+
+  .note { color:var(--faint); font-size:12.5px; line-height:1.5; margin-top:12px; }
+  .note code, code { background:var(--card2); padding:1px 5px; border-radius:4px; font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  details { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; }
+  details summary { cursor:pointer; color:var(--dim); font-size:12.5px; user-select:none; }
+  details summary:hover { color:var(--fg); }
+  details .note { margin-top:10px; }
+
+  .banner { padding:14px 16px; border-radius:10px; margin-bottom:16px; font-size:13.5px; line-height:1.5; }
+  .banner.err { background:rgba(248,113,113,.09); border:1px solid rgba(248,113,113,.25); color:#ffc9c9; }
+  .banner.warn { background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.22); color:#f5d68a; }
+
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:10px; }
+  th, td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--line); }
+  th { color:var(--faint); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+  tr:last-child td { border-bottom:0; }
+
+  .dev { border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--card2); }
+  .dev h3 { margin:0 0 8px; font-size:14px; color:var(--fg); text-transform:none; letter-spacing:0; }
+  .tag { display:inline-block; font-size:11px; padding:3px 8px; border-radius:5px; background:#2b313b; color:var(--dim); margin:0 5px 5px 0; }
+  .tag.ok { background:rgba(74,222,128,.12); color:var(--ok); }
+  .tag.acc { background:rgba(91,155,255,.13); color:var(--acc); }
+  .tag.warn { background:rgba(251,191,36,.12); color:var(--warn); }
+
+  #log {
+    background:#0a0c10; border:1px solid var(--line); border-radius:10px; padding:14px;
+    height:340px; overflow-y:auto; font-size:12px; font-family:ui-monospace,Menlo,monospace;
+    white-space:pre-wrap; word-break:break-all;
+  }
+  .l-info { color:var(--fg); } .l-dim { color:var(--faint); }
+  .l-ok { color:var(--ok); } .l-warn { color:var(--warn); } .l-err { color:var(--err); }
+
+  #kbPreview { width:100%; background:#0a0c10; border:1px solid var(--line); border-radius:10px; display:block; }
+  #preview { width:160px; height:160px; image-rendering:pixelated; border:1px solid var(--line); border-radius:10px; background:#0a0c10; }
+  pre#mapCmd { background:#0a0c10; border:1px solid var(--line); border-radius:10px; padding:14px;
+    font-size:12px; overflow-x:auto; white-space:pre-wrap; word-break:break-all; margin:0; font-family:ui-monospace,Menlo,monospace; }
+  #scanGrid { display:grid; grid-template-columns:repeat(16,1fr); gap:3px; max-width:520px; margin-top:14px; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--faint); }
+  .legend i { display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+
+<header>
+  <div class="brand">
+    <div>
+      <h1>AK820 Pro Studio</h1>
+      <p>Lighting, screen and key remapping – straight from your browser</p>
+    </div>
+    <div class="spacer"></div>
+    <select id="langSel" style="width:auto"><option value="en">English</option><option value="de">Deutsch</option></select>
+    <span class="pill" id="connStatus"><span class="dot"></span>Not connected</span>
+    <button id="pick">Connect keyboard</button>
+  </div>
+  <div id="nohid" class="banner err" style="display:none;margin-top:18px">
+    <strong>This browser cannot talk to USB devices.</strong><br>
+    <span>You need Chrome, Edge, Arc or Opera – Safari and Firefox do not support the interface.</span>
+  </div>
+  <nav>
+    <button data-tab="light" class="active">Lighting</button>
+    <button data-tab="display">Screen</button>
+    <button data-tab="keys">Key remapping</button>
+    <button data-tab="settings">Settings</button>
+    <button data-tab="expert">Expert</button>
+  </nav>
+</header>
+
+<section class="tab active" id="tab-light">
+  <div class="card">
+    <h2>Lighting</h2>
+    <p class="lead">The preview updates instantly. Nothing is sent until you click below.</p>
+    <canvas id="kbPreview" width="960" height="380"></canvas>
+    <div class="grid g3" style="margin-top:18px">
+      <div class="field"><label>Effect</label><select id="rgbMode"></select></div>
+      <div class="field"><label>Brightness</label><select id="rgbBright"><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option></select></div>
+      <div class="field"><label>Speed</label><select id="rgbSpeed"><option>0</option><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+      <div class="field"><label>Direction</label><select id="rgbDir"><option value="0">Left</option><option value="1">Down</option><option value="2">Up</option><option value="3">Right</option></select></div>
+      <div class="field"><label>Colour</label><input type="color" id="rgbColor" value="#ff0000"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="rgbRainbow"> Rainbow <span>– overrides the colour</span></label>
+    <div class="actions">
+      <button id="rgbApply">Send to keyboard</button>
+      <button id="kbToggle" class="sec">Pause preview</button>
+    </div>
+    <div class="note">The preview is a reconstruction, not read from the keyboard – the real effects differ in detail. Direction only applies to Scroll, Roll, Flow and Tilt.</div>
+    <details><summary>Technical details</summary>
+      <div class="note">Sequence: START 04 18, MODE_CFG 04 13, MODE_DATA, SAVE 04 02. In the data packet byte 0 is the effect value, bytes 1–3 are R/G/B, byte 8 the rainbow flag, bytes 9–11 brightness, speed and direction, trailer 55 AA on bytes 14/15.</div>
+    </details>
+  </div>
+</section>
+
+<section class="tab" id="tab-display">
+  <div class="card">
+    <h2>Image on the screen</h2>
+    <p class="lead">A photo, an animation or text – 128 × 128 pixels on the little display.</p>
+    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+      <div style="flex:1;min-width:260px">
+        <div class="field"><label>Choose an image file</label><input type="file" id="imgFile" accept="image/*"></div>
+        <h3>or write text</h3>
+        <div class="field"><input type="text" id="txtLines" placeholder="Separate lines with |, e.g. Hello|Chris"></div>
+        <div class="grid g3">
+          <div class="field"><label>Text colour</label><input type="color" id="txtColor" value="#ffffff"></div>
+          <div class="field"><label>Background</label><input type="color" id="txtBg" value="#000000"></div>
+          <div class="field"><label>Size (0 = auto)</label><input type="text" id="txtSize" value="0" class="mono"></div>
+        </div>
+        <button id="txtApply" class="sec">Apply text</button>
+      </div>
+      <div style="flex:0 0 auto;text-align:center">
+        <div class="field" style="margin-bottom:6px"><label>Preview</label></div>
+        <canvas id="preview" width="128" height="128"></canvas>
+        <div class="note" id="frameInfo" style="margin-top:6px"></div>
+      </div>
+    </div>
+    <h3>Image crop</h3>
+    <div class="grid g3">
+      <div class="field"><label>Horizontal <span id="cropXv">0</span></label><input type="range" id="cropX" min="-100" max="100" value="0"></div>
+      <div class="field"><label>Vertical <span id="cropYv">0</span></label><input type="range" id="cropY" min="-100" max="100" value="0"></div>
+      <div class="field"><label>Zoom <span id="zoomV">100 %</span></label><input type="range" id="zoom" min="100" max="400" value="100"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="dither"> Smooth colour gradients <span>– reduces banding</span></label>
+    <div class="actions">
+      <button id="imgUpload" disabled>Send to keyboard</button>
+      <button id="playToggle" class="sec" disabled>Pause preview</button>
+      <div class="note" id="imgInfo"></div>
+    </div>
+    <details><summary>Advanced options</summary>
+      <div class="grid g2" style="margin-top:12px">
+        <div class="field"><label>Maximum number of frames</label><input type="text" id="maxFrames" value="120" class="mono"></div>
+        <div class="field"><label>Transfer variant</label>
+          <select id="imgVariant">
+            <option value="aks075">AKS075 – START 0x00, CFG 0x03, SAVE</option>
+            <option value="gohv">gohv – START 0x01, CFG 0x02, FINISH</option>
+          </select>
+        </div>
+      </div>
+      <button id="imgAck" class="sec sm">Log acknowledgements: off</button>
+      <div class="note">Payload = 256-byte header plus frames of 32768 bytes each, padded to multiples of 4096. Frame delays are stored as milliseconds divided by two, so 2 to 510 ms. The two variants come from two sources that disagree on three bytes.</div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Clock</h2>
+    <p class="lead">The keyboard has its own clock, which drifts over time.</p>
+    <div class="actions">
+      <button id="timesync">Sync now</button>
+      <button id="runSequence" class="sec">Send everything</button>
+    </div>
+    <label class="check" style="margin-top:16px"><input type="checkbox" id="autoSync"> Keep in sync automatically</label>
+    <div class="grid g2">
+      <div class="field"><label>Every … minutes</label><input type="text" id="autoSyncMin" value="30" class="mono"></div>
+      <div class="field"><label>&nbsp;</label><div class="note" id="autoSyncInfo" style="margin:0"></div></div>
+    </div>
+    <div class="note">Send everything runs clock, lighting and image one after another. The automatic sync only works while this page stays open.</div>
+  </div>
+</section>
+
+<section class="tab" id="tab-keys">
+  <div class="card">
+    <h2>Which key is this?</h2>
+    <p class="lead">Switch the monitor on and press a key – useful when the legend is wrong.</p>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <label class="check" style="margin:0"><input type="checkbox" id="kmOn"> Monitor on</label>
+      <label class="check" style="margin:0"><input type="checkbox" id="kmPrevent" checked> Do not trigger the key</label>
+    </div>
+    <div id="kmBig" style="margin-top:16px;background:#0a0c10;border:1px solid var(--line);border-radius:10px;padding:22px;text-align:center;font-family:ui-monospace,Menlo,monospace">
+      <div style="color:var(--faint);font-size:13px">Switch the monitor on and press a key</div>
+    </div>
+    <div id="kmList"></div>
+    <div class="actions">
+      <button id="kmUse" class="sec" disabled>Use this key below</button>
+      <button id="kmWatch" class="sec">Watch knob and media keys</button>
+    </div>
+    <div class="note">While the monitor is on, input fields will not behave normally – switch it off afterwards. Media keys and the knob often produce no keyboard event; that is what the second button is for.</div>
+  </div>
+
+  <div class="card">
+    <h2>Remap a key</h2>
+    <p class="lead">Handled by macOS, not by the keyboard – and it applies to this device only.</p>
+    <div class="grid g2">
+      <div class="field"><label>Key on the AK820</label><select id="mapSrc"></select></div>
+      <div class="field"><label>should send</label><select id="mapDst"></select></div>
+    </div>
+    <label class="check"><input type="checkbox" id="mapScoped" checked> This keyboard only <span>– your built-in one stays untouched</span></label>
+    <button id="mapAdd">Add mapping</button>
+    <div id="mapList"></div>
+    <h3>Terminal command</h3>
+    <pre id="mapCmd"></pre>
+    <div class="actions">
+      <button id="mapCopy" class="sec">Copy command</button>
+      <button id="mapPlist" class="sec">Make permanent</button>
+      <button id="mapReset" class="sec">Copy reset command</button>
+    </div>
+    <div class="banner warn" style="margin-top:16px">
+      <strong>Want a key to launch an app?</strong>
+      <span>Map it to F13. No Mac keyboard has that key, so nothing collides – and you can bind it freely in the Shortcuts app.</span>
+    </div>
+    <details><summary>How to make it permanent</summary>
+      <div class="note">Make permanent downloads a startup file. Then run these three lines in Terminal:</div>
+      <pre style="background:#0a0c10;border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0 0;font-size:12px;white-space:pre-wrap">mkdir -p ~/Library/LaunchAgents
+mv ~/Downloads/de.local.ak820.keymap.plist ~/Library/LaunchAgents/
+launchctl load -w ~/Library/LaunchAgents/de.local.ak820.keymap.plist</pre>
+      <div class="note">Without this the mapping is gone after a restart. Key combinations such as Cmd plus Space are not possible – only key to key.</div>
+    </details>
+  </div>
+</section>
+
+<section class="tab" id="tab-settings">
+  <div class="card">
+    <h2>Standby</h2>
+    <p class="lead">How long without input before the screen switches off.</p>
+    <div class="grid g2">
+      <div class="field"><label>Switch off after</label>
+        <select id="sleepTime"><option value="0">Never</option><option value="1">1 minute</option><option value="2">5 minutes</option><option value="3">30 minutes</option></select>
+      </div>
+    </div>
+    <button id="sleepApply">Apply</button>
+    <div class="note">The keyboard knows no steps other than these four.</div>
+  </div>
+  <div class="card">
+    <h2>Profile</h2>
+    <p class="lead">The keyboard will not reveal its current state – here you can record it yourself.</p>
+    <button id="profSave">Save settings</button>
+    <button id="profLoadBtn" class="sec">Load settings</button>
+    <input type="file" id="profLoad" accept="application/json,.json" style="display:none">
+    <div class="note">Saved are lighting, standby, image crop and text template – no image files.</div>
+  </div>
+</section>
+
+<section class="tab" id="tab-expert">
+  <div class="card">
+    <h2>Devices</h2>
+    <p class="lead">The AK820 reports four interfaces. Two of them are needed.</p>
+    <button id="pickVendor" class="sec">Show AJAZZ only</button>
+    <button id="known" class="sec">Load already permitted</button>
+    <button id="descr" class="sec">Describe to log</button>
+    <div id="devs" style="margin-top:14px"></div>
+    <h3>Assignment</h3>
+    <div class="grid g3">
+      <div class="field"><label>Control (0xFF13)</label><select id="ctrlSel"><option value="">– none –</option></select></div>
+      <div class="field"><label>Data (0xFF68)</label><select id="dataSel"><option value="">– none –</option></select></div>
+      <div class="field"><label>Report ID variant</label>
+        <select id="variant"><option value="payload">A: reportId 0x00, full length</option><option value="hidapi">B: reportId from byte 0</option></select>
+      </div>
+    </div>
+    <div class="note">Variant A matches this keyboard descriptor and is confirmed on real hardware.</div>
+  </div>
+
+  <div class="card">
+    <h2>Send a single packet</h2>
+    <div class="field"><label>Hex bytes separated by spaces – padded to the report length</label>
+      <input type="text" id="rawHex" value="04 18 00 00 00 00 00 00 01" class="mono"></div>
+    <div class="grid g3">
+      <div class="field"><label>Report ID</label><input type="text" id="rawId" value="0x00" class="mono"></div>
+      <div class="field"><label>Kind</label>
+        <select id="rawType"><option value="feature">Feature – control</option><option value="output">Output – data</option></select>
+      </div>
+    </div>
+    <button id="rawSend">Send</button>
+    <button id="readFeat" class="sec">Read feature report</button>
+  </div>
+
+  <div class="card">
+    <h2>Command scanner</h2>
+    <p class="lead">The firmware echoes known commands back. That lets us sweep the command space.</p>
+    <div class="banner err">
+      <strong>At your own risk.</strong>
+      <span>Unknown commands can reset settings or write to flash. 0x02 is never sent, but a residual risk remains.</span>
+    </div>
+    <div class="grid g3">
+      <div class="field"><label>from</label><input type="text" id="scanFrom" value="0x00" class="mono"></div>
+      <div class="field"><label>to</label><input type="text" id="scanTo" value="0xFF" class="mono"></div>
+      <div class="field"><label>Pause per command (ms)</label><input type="text" id="scanDelay" value="30" class="mono"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="scanSkip" checked> Skip known ones</label>
+    <label class="check"><input type="checkbox" id="scanConfirm"> I have read the warning</label>
+    <button id="scanRun">Start scan</button>
+    <button id="scanStop" class="sec" disabled>Cancel</button>
+    <div id="scanGrid"></div>
+    <div class="legend">
+      <span><i style="background:#4ade80"></i>command exists</span>
+      <span><i style="background:#5b9bff"></i>already known</span>
+      <span><i style="background:#2b313b"></i>no response</span>
+      <span><i style="background:#f87171"></i>error</span>
+    </div>
+    <h3>Examine a command more closely</h3>
+    <p class="note" style="margin-top:0">Step through every combination of byte 2 and byte 8 and group the responses. Different responses mean the byte is evaluated.</p>
+    <div class="grid g3">
+      <div class="field"><label>Command</label><input type="text" id="expCmd" value="0x18" class="mono"></div>
+      <div class="field"><label>Byte 2 up to</label><input type="text" id="expSubMax" value="0x08" class="mono"></div>
+      <div class="field"><label>Byte 8 up to</label><input type="text" id="expEnMax" value="0x03" class="mono"></div>
+    </div>
+    <button id="expRun">Examine</button>
+    <button id="expStop" class="sec" disabled>Cancel</button>
+    <div id="expOut" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Log</h2>
+    <button id="copy" class="sec sm">Copy</button>
+    <button id="clear" class="sec sm">Clear</button>
+    <div id="log" style="margin-top:10px"></div>
+  </div>
+</section>
+
+</div><!-- /wrap -->
+
+<script src="app.js"></script>
+</body>
+</html>
