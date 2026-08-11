@@ -1,0 +1,1 @@
+# ajazz-ak820-pro
