@@ -30,6 +30,13 @@ const DE_UI = {
 "Play preview": "Vorschau abspielen",
 "The preview is a reconstruction, not read from the keyboard – the real effects differ in detail. Direction only applies to Scroll, Roll, Flow and Tilt.": "Die Vorschau ist nachgebaut, nicht von der Tastatur gelesen – die echten Effekte sehen im Detail anders aus. Die Richtung wirkt nur bei Scrollen, Rollen, Fließen und Neigen.",
 "Technical details": "Technische Details",
+"Persistence and technical details": "Dauerhaftigkeit und technische Details",
+"If a setting is lost when the keyboard reboots – for example when you flip the mode switch – the save step is the suspect. The sources disagree here, so both variants are selectable. Applies to lighting, clock and standby.": "Wenn eine Einstellung beim Neustart der Tastatur verlorengeht – etwa beim Umlegen des Modus-Schalters – liegt der Verdacht beim Speicherschritt. Die Quellen widersprechen sich hier, deshalb sind beide Varianten wählbar. Gilt für Beleuchtung, Uhrzeit und Standby.",
+"SAVE byte 8": "SAVE Byte 8",
+"0x00 – no flag": "0x00 – ohne Flag",
+"0x01 – flag set": "0x01 – Flag gesetzt",
+"Send FINISH afterwards": "Danach FINISH senden",
+"Test procedure: apply a setting, unplug the cable, wait five seconds, plug it back in. If the setting survives, that variant writes to flash.": "Testablauf: Einstellung übertragen, Kabel abziehen, fünf Sekunden warten, wieder einstecken. Übersteht die Einstellung das, schreibt diese Variante in den Flash.",
 "Image on the screen": "Bild auf dem Display",
 "A photo, an animation or text – 128 × 128 pixels on the little display.": "Foto, Animation oder Text – 128 × 128 Pixel auf dem kleinen Bildschirm.",
 "Choose an image file": "Bilddatei wählen",
@@ -224,7 +231,7 @@ function dump(u8, max = 128, indent = "    ") {
     out.push(indent + String(i).padStart(4, "0") + "  " +
       slice.map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" "));
   }
-  if (u8.length > max) out.push(indent + `… (${u8.length - max} weitere Byte)`);
+  if (u8.length > max) out.push(indent + `… (${u8.length - max} more bytes)`);
   return out.join("\n");
 }
 
@@ -247,7 +254,7 @@ function addDevices(list) {
     d.addEventListener("inputreport", (e) => {
       if (!ackLogging) return;
       const u8 = new Uint8Array(e.data.buffer);
-      log(`<< Input-Report von "${e.device.productName}" (${sigRole(e.device) || "?"}), ID ${hx(e.reportId)}, ${u8.length} Byte:`, "dim");
+      log(`<< Input report from "${e.device.productName}" (${sigRole(e.device) || "?"}), ID ${hx(e.reportId)}, ${u8.length} Byte:`, "dim");
       log(dump(u8, 64), "dim");
     });
     added++;
@@ -374,7 +381,7 @@ async function doPick(filters, label) {
   } catch (e) { log(`requestDevice failed: ${e.name}: ${e.message}`, "err"); }
 }
 
-$("#pick").onclick = () => doPick([], "ohne Filter");
+$("#pick").onclick = () => doPick([], "no filter");
 $("#pickVendor").onclick = () => doPick([{ vendorId: VID_AJAZZ }], `vendorId=${hx(VID_AJAZZ, 4)}`);
 $("#known").onclick = async () => {
   try {
@@ -457,7 +464,7 @@ function frame(pkt64) {
 
 async function sendFeature(dev, pkt64, label) {
   const { id, data } = frame(pkt64);
-  log(`>> ${label}: sendFeatureReport(id=${hx(id)}, ${data.length} Byte)`, "info");
+  log(`>> ${label}: sendFeatureReport(id=${hx(id)}, ${data.length} bytes)`, "info");
   log(dump(data), "dim");
   try {
     await dev.sendFeatureReport(id, data);
@@ -485,6 +492,24 @@ async function handshake(dev, id = 0x00) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Abschluss einer Schreibsequenz. Die Quellen sind sich uneinig, ob Byte 8 im
+// SAVE-Paket 0x00 oder 0x01 sein muss und ob danach noch FINISH folgt – deshalb
+// einstellbar, damit sich per Versuch klären lässt, was den Neustart übersteht.
+async function finalize(dev) {
+  const b8 = parseInt($("#saveByte8").value, 16) || 0;
+  const withFinish = $("#saveFinish").checked;
+  log(`Persistence: SAVE byte8=${hx(b8)}${withFinish ? " + FINISH" : ", no FINISH"}`, "dim");
+  if (!(await sendFeature(dev, cmdPacket(0x02, 0x00, b8), `SAVE (04 02, byte8=${hx(b8)})`))) return false;
+  await sleep(100);
+  await handshake(dev);
+  if (withFinish) {
+    if (!(await sendFeature(dev, cmdPacket(0xf0, 0x00, 0x01), "FINISH (04 F0)"))) return false;
+    await sleep(100);
+    await handshake(dev);
+  }
+  return true;
+}
 
 function waitInput(dev, ms) {
   return new Promise((resolve) => {
@@ -516,8 +541,7 @@ $("#timesync").onclick = async () => {
     await sleep(40); await handshake(dev);
     if (!(await sendFeature(dev, timeDataPacket(now), "TIME_DATA"))) return;
     await sleep(40);
-    if (!(await sendFeature(dev, cmdPacket(0x02, 0x00, 0x00), "SAVE (04 02)"))) return;
-    await sleep(100);
+    if (!(await finalize(dev))) return;
     log("--- Time sync complete ---", "ok");
   } catch (e) { log(`Time sync aborted: ${e.name}: ${e.message}`, "err"); }
 };
@@ -728,7 +752,7 @@ $("#rgbApply").onclick = async () => {
   const name = LI((LIGHT_MODES.find((m) => m[0] === mode) || [0, ["?","?"]])[1]);
   try {
     await ensureOpen(dev);
-    log(`--- Beleuchtung: ${name} (${hx(mode)}), RGB ${r}/${g}/${b} ---`, "info");
+    log(`--- Lighting: ${name} (${hx(mode)}), RGB ${r}/${g}/${b} ---`, "info");
     if (!(await sendFeature(dev, cmdPacket(0x18, 0x00, 0x01), "START (04 18)"))) return;
     await sleep(40); await handshake(dev);
     if (!(await sendFeature(dev, cmdPacket(0x13, 0x00, 0x01), "MODE_CFG (04 13)"))) return;
@@ -737,8 +761,7 @@ $("#rgbApply").onclick = async () => {
       Number($("#rgbBright").value), Number($("#rgbSpeed").value), Number($("#rgbDir").value));
     if (!(await sendFeature(dev, pkt, "MODE_DATA"))) return;
     await sleep(40);
-    if (!(await sendFeature(dev, cmdPacket(0x02, 0x00, 0x00), "SAVE (04 02)"))) return;
-    await sleep(100);
+    if (!(await finalize(dev))) return;
     log("--- Lighting applied ---", "ok");
   } catch (e) { log(`Lighting aborted: ${e.name}: ${e.message}`, "err"); }
 };
@@ -750,14 +773,14 @@ $("#sleepApply").onclick = async () => {
   const lvl = Number($("#sleepTime").value);
   try {
     await ensureOpen(dev);
-    log(`--- Standby-Stufe ${lvl} ---`, "info");
+    log(`--- Standby level ${lvl} ---`, "info");
     if (!(await sendFeature(dev, cmdPacket(0x18, 0x00, 0x01), "START (04 18)"))) return;
     await sleep(40); await handshake(dev);
     if (!(await sendFeature(dev, cmdPacket(0x17, 0x01, 0x01), "SLEEP_CFG (04 17)"))) return;
     await sleep(40); await handshake(dev);
     if (!(await sendFeature(dev, sleepDataPacket(lvl), "SLEEP_DATA"))) return;
     await sleep(40);
-    if (!(await sendFeature(dev, cmdPacket(0x02, 0x00, 0x00), "SAVE (04 02)"))) return;
+    if (!(await finalize(dev))) return;
     log("--- Standby applied ---", "ok");
   } catch (e) { log(`Standby aborted: ${e.name}: ${e.message}`, "err"); }
 };
@@ -1094,7 +1117,7 @@ $("#rawSend").onclick = async () => {
   buf.set(bytes.slice(0, len));
   try {
     await ensureOpen(dev);
-    log(`>> Roh-${type} an "${dev.productName}" (${sigRole(dev) || "?"}), id=${hx(id)}, ${len} Byte:`, "info");
+    log(`>> raw ${type} to "${dev.productName}" (${sigRole(dev) || "?"}), id=${hx(id)}, ${len} bytes:`, "info");
     log(dump(buf), "dim");
     if (type === "feature") await dev.sendFeatureReport(id, buf);
     else await dev.sendReport(id, buf);
@@ -1250,6 +1273,7 @@ const PROFILE_FIELDS = [
   ["maxFrames", "value"], ["cropX", "value"], ["cropY", "value"], ["zoom", "value"],
   ["dither", "checked"], ["txtLines", "value"], ["txtColor", "value"], ["txtBg", "value"],
   ["txtSize", "value"], ["variant", "value"], ["autoSyncMin", "value"],
+  ["saveByte8", "value"], ["saveFinish", "checked"], ["langSel", "value"],
 ];
 
 $("#profSave").onclick = () => {
@@ -1276,6 +1300,8 @@ $("#profLoad").onchange = async (ev) => {
       if (data.settings && id in data.settings) { $("#" + id)[prop] = data.settings[id]; n++; }
     });
     scheduleRebuild();
+    LANG = $("#langSel").value;
+    applyLang();
     log(`Profile loaded: ${n} setting(s) from ${data.saved || "unknown date"}.`, "ok");
   } catch (e) {
     log(`Could not read profile: ${e.message}`, "err");

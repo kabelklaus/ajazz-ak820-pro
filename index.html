@@ -176,7 +176,17 @@
       <button id="kbToggle" class="sec">Pause preview</button>
     </div>
     <div class="note">The preview is a reconstruction, not read from the keyboard – the real effects differ in detail. Direction only applies to Scroll, Roll, Flow and Tilt.</div>
-    <details><summary>Technical details</summary>
+    <details><summary>Persistence and technical details</summary>
+      <div class="note">If a setting is lost when the keyboard reboots – for example when you flip the mode switch – the save step is the suspect. The sources disagree here, so both variants are selectable. Applies to lighting, clock and standby.</div>
+      <div class="grid g2" style="margin-top:12px">
+        <div class="field"><label>SAVE byte 8</label>
+          <select id="saveByte8"><option value="0x00">0x00 – no flag</option><option value="0x01">0x01 – flag set</option></select>
+        </div>
+        <div class="field"><label>&nbsp;</label>
+          <label class="check" style="margin:0"><input type="checkbox" id="saveFinish"> Send FINISH afterwards</label>
+        </div>
+      </div>
+      <div class="note">Test procedure: apply a setting, unplug the cable, wait five seconds, plug it back in. If the setting survives, that variant writes to flash.</div>
       <div class="note">Sequence: START 04 18, MODE_CFG 04 13, MODE_DATA, SAVE 04 02. In the data packet byte 0 is the effect value, bytes 1–3 are R/G/B, byte 8 the rainbow flag, bytes 9–11 brightness, speed and direction, trailer 55 AA on bytes 14/15.</div>
     </details>
   </div>
